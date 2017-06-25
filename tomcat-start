@@ -1,0 +1,70 @@
+#!/bin/sh
+
+#create at 2016-08-23
+#author billy
+#qq 5884628
+
+# chkconfig: 2345 31 61
+# description: this is tomcat start scprits
+
+prog="tomcat-pc"
+BASE_DIR=/application/$prog
+START="$BASE_DIR/bin/startup.sh"
+SHUTDOWN=$BASE_DIR/bin/shutdown.sh
+. /etc/init.d/functions            #调用系统函数
+RETVAL=0
+uid=`id | cut -d\( -f1 | cut -d= -f2`
+
+start() {
+        # Only root can start the service
+        [ $uid -ne 0 ] && exit 4
+        if status $prog > /dev/null ; then    #查看status
+                exit 0
+        fi
+daemon --user=tomcat "$START >/dev/null 2>&1"    #使用daemon以tomcat用户启动
+echo  $"Starting $prog: "
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ] ; then
+                touch /var/lock/subsys/$prog
+                [ ! -f /var/run/${prog}.pid ] &&
+                    /usr/bin/pgrep -f "$prog/conf" > /var/run/${prog}.pid
+        fi
+        return $RETVAL
+}
+
+stop() {
+        echo -n $"Stopping $prog: "
+        #kill -9 `cat /var/run/${prog}.pid`
+killproc $prog
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && {
+                rm -f /var/lock/subsys/$prog
+                rm -f /var/run/${prog}.pid
+        }
+        return $RETVAL
+}
+
+case $1 in
+  start)
+start
+RETVAL=$?
+;;
+  stop)
+stop
+RETVAL=$?
+;;
+  restart|reload)
+stop
+start
+RETVAL=$?
+;;
+  status)
+        status $prog
+        RETVAL=$?
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|status|restart|reload}"
+        RETVAL=2
+        ;;
+esac
